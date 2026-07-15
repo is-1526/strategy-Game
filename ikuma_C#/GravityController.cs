@@ -1,59 +1,57 @@
 using UnityEngine;
 
-/// <summary>
-/// 壁・天井に触れると重力方向を変える
-/// PlayerLevel のレベルが条件を満たした場合のみ有効
-/// Player にアタッチ
-/// </summary>
 public class GravityController : MonoBehaviour
 {
     [Header("重力設定")]
-    public float gravityStrength = 20f; // 重力の強さ
-    public Vector3 gravityDir = Vector3.down; // 現在の重力方向
+    public float   gravityStrength = 20f;
+    public Vector3 gravityDir      = Vector3.down;
 
     [Header("切り替え設定")]
-    public float changeDelay = 0.5f; // 連続切り替え防止の間隔（秒）
+    public float changeDelay = 0.5f;
 
-    private PlayerLevel   _playerLevel;
-    private CharacterController _cc;
+    // 直前に触れた壁の法線（CameraController が参照する）
+    public Vector3 LastHitNormal { get; private set; } = Vector3.up;
+    public bool    GravityChanged { get; private set; } = false;
+
+    private PlayerLevel _playerLevel;
     private float _lastChanged = -999f;
 
     void Start()
     {
         _playerLevel = GetComponent<PlayerLevel>();
-        _cc          = GetComponent<CharacterController>();
+    }
+
+    void Update()
+    {
+        // 毎フレームリセット（1フレームだけtrueになる）
+        GravityChanged = false;
     }
 
     void OnControllerColliderHit(ControllerColliderHit hit)
     {
-        // レベルが足りない場合は無視
         if (_playerLevel == null || !_playerLevel.canChangeGravity) return;
-
-        // 連続切り替え防止
+        if (!hit.gameObject.CompareTag("Wall")) return;
         if (Time.time - _lastChanged < changeDelay) return;
 
         Vector3 normal = hit.normal;
-
-        // 軸に平行な面のみ対応（斜め面を無視）
         if (!IsAxisAligned(normal)) return;
 
         Vector3 newGravity = -normal;
-
-        // すでに同じ方向なら無視
         if (Vector3.Dot(newGravity, gravityDir) > 0.99f) return;
 
-        // 重力方向を変更
         gravityDir     = newGravity;
+        LastHitNormal  = normal; // 当たった面の法線を保存
+        GravityChanged = true;   // 変化したことを通知
         _lastChanged   = Time.time;
 
-        // プレイヤーの上方向を新しい重力の逆方向にスムーズ回転
-        Vector3 targetUp = -gravityDir;
-        transform.rotation = Quaternion.FromToRotation(transform.up, targetUp) * transform.rotation;
+        // プレイヤーの上方向を新しい重力の逆方向に回転
+        Vector3    targetUp     = -gravityDir;
+        Quaternion bodyRotation = Quaternion.FromToRotation(transform.up, targetUp) * transform.rotation;
+        transform.rotation = bodyRotation;
 
-        Debug.Log($"重力変更 → {gravityDir}");
+        Debug.Log($"重力変更 → {gravityDir} 法線 → {normal}");
     }
 
-    // 軸に平行かチェック（X・Y・Z いずれかにほぼ平行）
     bool IsAxisAligned(Vector3 v)
     {
         return Mathf.Abs(v.x) > 0.9f

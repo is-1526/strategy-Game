@@ -21,7 +21,7 @@ public class PlayerLevel : MonoBehaviour
     public void AddExp(int amount)
     {
         exp += amount;
-        Debug.Log($"経験値 +{amount}　合計:{exp} / {expToNext}");
+        Debug.Log($"経験値 +{amount} 合計:{exp} / {expToNext}");
 
         // 経験値が上限を超えたらレベルアップ
         if (exp >= expToNext)

@@ -22,9 +22,8 @@ public class PlayerLevel : MonoBehaviour
     public bool canJumpDash      = false;
     public bool canChangeGravity = false;
 
-    [Header("Lv2で出現するジェットアイテム")]
-    public GameObject jetItemPrefab;   // JetItem の Prefab をセット
-    public Transform  jetItemSpawnPos; // 出現位置
+    [Header("Lv2で表示されるジェットアイテム")]
+    public GameObject jetItem; // シーンに配置したジェットアイテムをセット
 
     private PlayerController _pc;
     private GravityFlat      _gf;
@@ -35,6 +34,9 @@ public class PlayerLevel : MonoBehaviour
         _gf = GetComponent<GravityFlat>();
 
         // 初期状態は重力変化無効（isUnlocked = false がデフォルト）
+        // ジェットアイテムを非表示にする
+        if (jetItem != null)
+            jetItem.SetActive(false);
     }
 
     public void AddExp(int amount)
@@ -77,10 +79,10 @@ public class PlayerLevel : MonoBehaviour
                 _pc.canDash = true;
             }
 
-            // ジェットアイテムを出現させる
-            if (jetItemPrefab != null && jetItemSpawnPos != null)
+            // ジェットアイテムを表示
+            if (jetItem != null)
             {
-                Instantiate(jetItemPrefab, jetItemSpawnPos.position, Quaternion.identity);
+                jetItem.SetActive(true);
                 Debug.Log("ジェットアイテムが出現しました！");
             }
 

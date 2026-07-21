@@ -7,11 +7,11 @@ using UnityEngine;
 /// </summary>
 public class ExpItem : MonoBehaviour
 {
-    public int expAmount = 100; // 取得時の経験値
+    public int expAmount = 10; // 取得時の経験値
 
     void OnTriggerEnter(Collider other)
     {
-        PlayerLevel playerLevel = other.GetComponent<PlayerLevel>();
+        PlayerLevel playerLevel = other.GetComponentInParent<PlayerLevel>();
         if (playerLevel == null) return;
 
         playerLevel.AddExp(expAmount);

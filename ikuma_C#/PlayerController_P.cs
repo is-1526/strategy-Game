@@ -10,26 +10,25 @@ public class PlayerController : MonoBehaviour
     public float rotationSpeed   = 10f;
 
     [Header("ジャンプ設定")]
-    public float jumpPower = 5f;
+    public float jumpPower = 8f;
 
     [Header("カメラ参照")]
     public Transform cameraTransform;
 
     public Vector3 CurrentUp { get; private set; } = Vector3.up;
 
-    // ジャンプ・ダッシュの解放フラグ（PlayerLevelが設定する）
-    public bool canJump  = false;
-    public bool canDash  = false;
+    public bool canJump = false;
+    public bool canDash = false;
 
-    private Rigidbody   rb;
-    private GravityFlat gf;
+    private Rigidbody    rb;
+    private GravityFlat  gf;
+    private GravitySphere gs;
 
     // ダッシュ用ダブルタップ
     private float _lastWPressTime  = -1f;
     private float _doubleTapWindow = 0.3f;
     private bool  _isDashing       = false;
 
-    // スタミナ
     [Header("スタミナ設定")]
     public float maxStamina      = 100f;
     public float staminaDrain    = 20f;
@@ -40,6 +39,7 @@ public class PlayerController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         gf = GetComponent<GravityFlat>();
+        gs = GetComponent<GravitySphere>();
         rb.useGravity     = false;
         rb.freezeRotation = true;
         currentStamina    = maxStamina;
@@ -48,16 +48,38 @@ public class PlayerController : MonoBehaviour
     bool IsGrounded()
     {
         Vector3 gravityDir = gf != null ? gf.GravityDirection : Vector3.down;
-        return Physics.Raycast(transform.position, gravityDir, 0.6f);
+        Vector3 up         = -gravityDir;
+
+        // アクティブな形状の ShapeGroundChecker を取得
+        ShapeGroundChecker checker = GetActiveChecker();
+        if (checker != null)
+        {
+            return checker.CheckGrounded(gravityDir, up, transform.right, transform.forward);
+        }
+
+        // ShapeGroundChecker がない場合のフォールバック
+        Vector3 center = transform.position - up * 0.45f;
+        return Physics.Raycast(center, gravityDir, 0.15f);
+    }
+
+    // アクティブな形状オブジェクトの ShapeGroundChecker を返す
+    ShapeGroundChecker GetActiveChecker()
+    {
+        ShapeGroundChecker[] checkers = GetComponentsInChildren<ShapeGroundChecker>();
+        foreach (ShapeGroundChecker c in checkers)
+        {
+            if (c.gameObject.activeSelf)
+                return c;
+        }
+        return null;
     }
 
     void Update()
     {
-        // ジャンプ（解放済みかつ接地中）
+        // ジャンプ
         if (canJump && IsGrounded() && Input.GetKeyDown(KeyCode.Space))
         {
-            Vector3 jumpDir = CurrentUp;
-            rb.AddForce(jumpDir * jumpPower, ForceMode.Impulse);
+            rb.AddForce(CurrentUp * jumpPower, ForceMode.Impulse);
         }
 
         // ダッシュ（ダブルタップ）
@@ -74,7 +96,6 @@ public class PlayerController : MonoBehaviour
             if (currentStamina <= 0f)
                 _isDashing = false;
 
-            // スタミナ管理
             if (_isDashing)
             {
                 currentStamina -= staminaDrain * Time.deltaTime;
@@ -90,9 +111,18 @@ public class PlayerController : MonoBehaviour
 
     void FixedUpdate()
     {
-        Vector3 gravityDir = gf != null ? gf.GravityDirection : Vector3.down;
-        Vector3 targetUp   = -gravityDir;
-        CurrentUp          = targetUp;
+        // GravitySphere と GravityFlat のどちらが最後に更新されたかで優先度を決める
+        // どちらも最後に触れた面の重力方向を保持し続ける
+        Vector3 gravityDir;
+        if (gs != null && gs.IsAttracting)
+            gravityDir = gs.GravityDirection;
+        else if (gf != null)
+            gravityDir = gf.GravityDirection;
+        else
+            gravityDir = Vector3.down;
+
+        Vector3 targetUp = -gravityDir;
+        CurrentUp        = targetUp;
 
         // 重力を加算
         rb.AddForce(gravityDir * gravityStrength, ForceMode.Acceleration);
@@ -108,14 +138,11 @@ public class PlayerController : MonoBehaviour
         Vector3 camRight   = Vector3.ProjectOnPlane(cameraTransform.right,   targetUp).normalized;
         Vector3 moveDir    = (camForward * z + camRight * x).normalized;
 
-        // ダッシュ中は速度を上書き
         float speed = (_isDashing && canDash) ? dashSpeed : moveSpeed;
 
-        // 水平移動（重力方向の速度は保持）
         Vector3 gravityVelocity = Vector3.Project(rb.linearVelocity, gravityDir);
         rb.linearVelocity = gravityVelocity + moveDir * speed;
 
-        // カメラ方向にプレイヤーを回転
         Vector3 targetForward = Vector3.ProjectOnPlane(cameraTransform.forward, targetUp).normalized;
         if (targetForward.sqrMagnitude > 0.001f)
         {

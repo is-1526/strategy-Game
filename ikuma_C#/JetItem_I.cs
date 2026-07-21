@@ -14,7 +14,7 @@ public class JetItem : MonoBehaviour
     void OnTriggerEnter(Collider other)
     {
         // レベル確認
-        PlayerLevel playerLevel = other.GetComponent<PlayerLevel>();
+        PlayerLevel playerLevel = other.GetComponentInParent<PlayerLevel>();
         if (playerLevel == null) return;
         if (playerLevel.level < 2)
         {
@@ -23,7 +23,7 @@ public class JetItem : MonoBehaviour
         }
 
         // JetController に時間を追加
-        JetController jet = other.GetComponent<JetController>();
+        JetController jet = other.GetComponentInParent<JetController>();
         if (jet == null) return;
 
         jet.AddJetTime(jetTime);

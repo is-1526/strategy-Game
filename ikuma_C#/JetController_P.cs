@@ -8,7 +8,7 @@ using UnityEngine;
 public class JetController : MonoBehaviour
 {
     [Header("ジェット設定")]
-    public float jetForce    = 15f;  // 上昇する力
+    public float jetForce    = 25f;  // 上昇する力
     public float jetDuration = 10f;  // 飛行可能時間（秒）
 
     [Header("現在の残り時間（確認用）")]
